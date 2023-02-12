@@ -1,0 +1,2 @@
+reward_model: "microsoft/deberta-v3-large"
+cache_dir: "/mnt/devel/pretrained_models"
