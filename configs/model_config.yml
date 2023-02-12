@@ -1,2 +1,2 @@
 reward_model: "microsoft/deberta-v3-large"
-cache_dir: "/mnt/devel/pretrained_models"
+cache_dir: "/mnt/sairam/pretrained_models"
