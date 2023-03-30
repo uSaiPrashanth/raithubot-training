@@ -5,11 +5,13 @@ import os
 from tqdm import tqdm
 import torch
 
-def generate(text, model, tokenizer):
+def generate(text, tokenizer, model):
     tokens = torch.cuda.IntTensor(tokenizer([text]).input_ids)
     generation = model.generate(
         input_ids = tokens,
-        temperature = 0,
+        temperature = 0.0,
+        top_k = 0,
+        top_p = 0,
         max_length = 512
     )
     text = tokenizer.decode(generation[0].cpu())
@@ -18,6 +20,7 @@ def generate(text, model, tokenizer):
 
     text = text[len("<|assistant|>"):]
 
+    text = text[text.find("\"")+1:text.rfind("\"")]
     return text
 
 
@@ -41,11 +44,14 @@ if __name__ == '__main__':
 
     tokenizer = AutoTokenizer.from_pretrained('OpenAssistant/oasst-sft-1-pythia-12b', cache_dir = 'hf-models/')
 
-    input_prompt = ("<|prompter|>Rephrase the text from a confused farmer:"
+    input_prompt = ("<|prompter|>Rephrase the prompt from a confused farmer:"
      " \'inquiering date to distributed the new land use policy NLUP of the mizoram state goverment.\'"
-     "<|endoftext|><|assistant|>Hey There I am a farmer from mizoram and I'd like to know when will the new land use policy"
+     "<|endoftext|><|assistant|>Rephrased prompt: \"Hey There I am a farmer from mizoram and I'd like to know when will the new land use policy\""
      " NLUP will start?<|endoftext|><|prompter|>Rephrase the text from a confused farmer:"
-     "\'{}\'<|endoftext|><|assistant|>"
+     "\'INFORMATION OF GRAO VINE\'<|endoftext|><|assistant|>Rephrased prompt: \"So I heard about grao vine from my friends and I am not able to understand if it's useful to me. What is Grao Vine? And what are it's uses?\""
+     "<|endoftext|>"
+     "<|prompter|>Rephrase the text from a confused farmer:"
+     "\'{}\'<|endoftext|><|assistant|>Rephrased Prompt: \""
     )
 
     writer = open("kcc_data/text/data.txt", 'w')
