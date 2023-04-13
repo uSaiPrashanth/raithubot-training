@@ -4,6 +4,7 @@ import json
 import os
 from tqdm import tqdm
 import torch
+import argparse
 
 def generate(text, tokenizer, model):
     tokens = torch.cuda.IntTensor(tokenizer([text]).input_ids)
@@ -46,8 +47,8 @@ if __name__ == '__main__':
 
     input_prompt = ("<|prompter|>Rephrase the prompt from a confused farmer:"
      " \'inquiering date to distributed the new land use policy NLUP of the mizoram state goverment.\'"
-     "<|endoftext|><|assistant|>Rephrased prompt: \"Hey There I am a farmer from mizoram and I'd like to know when will the new land use policy\""
-     " NLUP will start?<|endoftext|><|prompter|>Rephrase the text from a confused farmer:"
+     "<|endoftext|><|assistant|>Rephrased prompt: \"Hey I'd like to know when will the new land use policy\""
+     " NLUP will start in mizoram state government?<|endoftext|><|prompter|>Rephrase the text from a confused farmer:"
      "\'INFORMATION OF GRAO VINE\'<|endoftext|><|assistant|>Rephrased prompt: \"So I heard about grao vine from my friends and I am not able to understand if it's useful to me. What is Grao Vine? And what are it's uses?\""
      "<|endoftext|>"
      "<|prompter|>Rephrase the text from a confused farmer:"
