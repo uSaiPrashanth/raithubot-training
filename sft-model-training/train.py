@@ -1,42 +1,24 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from oslo import ParallelContext, ParallelMode
 from oslo.torch.nn.parallel import TensorParallel
+from oslo.torch.utils.extensions import from_parallelized
+from functools import partial
 import oslo
+import os
 from tqdm.auto import tqdm
 import jsonlines
 import torch
 
-if __name__ == '__main__':
 
+def train_model(parallel_context):
     model = AutoModelForCausalLM.from_pretrained('EleutherAI/pythia-12b', cache_dir = './hf-models')
-
     tokenizer = AutoTokenizer.from_pretrained(
         'EleutherAI/pythia-12b', 
         cache_dir = './hf-models',
-        additional_special_tokens = (
-            '<|query|>',
-            '</query/>',
-            '<|response|>',
-            '</response/>',
-            '<|result|>',
-            '</result/>',
-            '<|summary|>',
-            '</summary/>',
-            '<|results|>',
-            '</results/>',
-            '<|result-sentence|>'
-        )
     )
 
     with open("kcc_data/jsonlines/data.jsonl", 'r') as reader:
         data = [i[1:-2] for i in reader]
-    
-    parallel_context = ParallelContext.from_torch(
-        data_parallel_size=1,
-        pipeline_parallel_size=1,
-        tensor_parallel_size=8,
-        tensor_parallel_mode=ParallelMode.TENSOR_1D,
-    )
 
     model = TensorParallel(model, parallel_context)
     oslo.ready(model, parallel_context)
@@ -61,4 +43,26 @@ if __name__ == '__main__':
 
             pbar.set_description(f"LOSS: {loss.item():.3f}")
         
-    model.save_pretrained(save_directory = "./hf-models/usvsnsp-sft-model/", merge_checkpoints = True)
+        
+    model.save_pretrained(save_directory = "./hf-models/usvsnsp-sft-model/")
+
+def deparallelize_save(parallel_context):
+    model = AutoModelForCausalLM.from_pretrained('EleutherAI/pythia-12b', cache_dir = './hf-models')
+    model = TensorParallel(model, parallel_context)
+    oslo.ready(model, parallel_context)
+
+    model.from_parallelized(path = "./hf-models/usvsnsp-sft-model")
+    model.save_pretrained(
+        save_directory = './hf-models/usvsnsp-sft-combined',
+        merge_checkpoints = True
+    )
+
+if __name__ == '__main__':
+    parallel_context = ParallelContext.from_torch(
+        data_parallel_size=1,
+        pipeline_parallel_size=1,
+        tensor_parallel_size=int(os.environ['WORLD_SIZE']),
+        tensor_parallel_mode=ParallelMode.TENSOR_1D,
+    )
+    # train_model(parallel_context)
+    deparallelize_save(parallel_context)
