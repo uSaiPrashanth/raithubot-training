@@ -1,2 +1,3 @@
 *.ipynb_checkpoints/
 hf-models/*
+hf-data/*
