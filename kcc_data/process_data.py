@@ -3,6 +3,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import json
 import os
 from tqdm import tqdm
+import numpy as np
 import torch
 import argparse
 
@@ -16,21 +17,27 @@ def generate(text, tokenizer, model):
         max_length = 512
     )
     text = tokenizer.decode(generation[0].cpu())
+    text = text.split("\n")
+    prompt = text[13][len("Question: "):]
+    summary = text[14][len("Summary: "):]
+    return prompt, summary
 
-    text = text[text.rfind("<|assistant|>"):text.rfind("<|endoftext|>")]
-
-    text = text[len("<|assistant|>"):]
-
-    text = text[text.find("\"")+1:text.rfind("\"")]
-    return text
-
+def isvalid(query):
+    if "number" in query.lower():
+        return False
+    if "weather" in query.lower():
+        return False
+    
+    return True
 
 def read_from_json(path):
     with open(path, 'r') as f:
         data = json.load(f)
     
+    np.random.shuffle(data)
     for record in data:
-        yield record["QueryText"]
+        if isvalid(record['QueryText']):
+            yield record["QueryText"]
 
 
 def read_available_data():
@@ -40,29 +47,36 @@ def read_available_data():
 
 
 if __name__ == '__main__':
-    model = AutoModelForCausalLM.from_pretrained('OpenAssistant/oasst-sft-1-pythia-12b', cache_dir = 'hf-models/')
-    model = model.half().eval().cuda()
+    model = AutoModelForCausalLM.from_pretrained(
+        'huggyllama/llama-13b', 
+        cache_dir = 'hf-models/',
+    ).half().eval().cuda()
 
-    tokenizer = AutoTokenizer.from_pretrained('OpenAssistant/oasst-sft-1-pythia-12b', cache_dir = 'hf-models/')
+    tokenizer = AutoTokenizer.from_pretrained('huggyllama/llama-13b', cache_dir = 'hf-models/')
 
-    input_prompt = ("<|prompter|>Rephrase the query as coming from a confused farmer:"
-     " \'inquiering date to distributed the new land use policy NLUP of the mizoram state goverment.\'"
-     "<|endoftext|><|assistant|>Rephrased prompt: \"Hey I'd like to know when will the new land use policy"
-     " NLUP will start in mizoram state government?\"<|endoftext|><|prompter|>Rephrase the query as coming from a confused farmer:"
-     "\'INFORMATION OF GRAO VINE\'<|endoftext|><|assistant|>Rephrased prompt: \"So I heard about grao vine from my friends and I am not able to understand if it's useful to me. What is Grao Vine? And what are it's uses?\""
-     "<|endoftext|>"
-     "<|prompter|>Rephrase the query as coming from a confused farmer:"
-     "\'{}\'<|endoftext|><|assistant|>Rephrased Prompt: \""
+    input_prompt = (
+        "Prompt: varieties of maize\n"
+        "Question: I am new to farming. Could you tell me the various types of maize that can be grown in telangana?\n"
+        "Summary: Types of maize crops grown in telangana\n\n"
+        "Prompt: stem borer management in paddy\n"
+        "Question: I'm having this moth in my paddy farm that are pale yellow in color with a dark brown head. I'm not sure what to do to remove them. Can you help me?\n"
+        "Summary: Stem borer management in paddy\n\n"
+        "Prompt: FARMER ASKED QUERY ON NUTRIENT MANAGEMENT IN BENGAL GRAM\n"
+        "Question: I'm growing bengal gram in my farmland. But I'm not sure if it's having appropriate nutrients. Could you help me figure it out?\n"
+        "Summary: Nutrient Management in bengal gram\n\n"
+        "Prompt: {}\n"
+        "Question: "
+        ""
     )
 
     writer = open("kcc_data/text/data.txt", 'w')
 
     for query in tqdm(read_available_data()):
-        prompt = input_prompt.format(query)
-        
-        response = generate(prompt, tokenizer, model)
-        writer.write(response + "\n")
-
-        writer.flush()
-
-
+        prompt = input_prompt.format(query.strip())
+        try:
+            response, summary = generate(prompt, tokenizer, model)
+            writer.write(response + "\n")
+            writer.write(summary + "\n")
+            writer.flush()
+        except IndexError as e:
+            print(e)

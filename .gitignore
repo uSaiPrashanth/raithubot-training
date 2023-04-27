@@ -1,3 +1,6 @@
 *.ipynb_checkpoints/
 hf-models/*
 hf-data/*
+api_keys.json
+wandb/
+keys/
